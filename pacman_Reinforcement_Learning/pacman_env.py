@@ -33,6 +33,8 @@ class Ghost:
         self.strategy = strategy  # e.g., 'chase', 'scatter', 'random'
         self.scatter_target = scatter_target
         self.invalid_move_attempts = {}
+        self.move_frequency = 1.5  # <-- ghost moves only once every 3 times 'move()' is called
+        self.step_counter = 0
 
     def move(self, pacman_pos):
         """
@@ -41,6 +43,14 @@ class Ghost:
         Parameters:
             pacman_pos (Tuple[int, int]): Current position of Pac-Man.
         """
+
+         # Increase our counter each call
+        self.step_counter += 1
+        # If we haven't reached move_frequency yet, skip actual move
+        if self.step_counter < self.move_frequency:
+            return
+
+        self.step_counter = 0
         if self.strategy == 'chase':
             self.chase_pacman(pacman_pos)
         elif self.strategy == 'scatter':
@@ -257,16 +267,16 @@ class PacManEnv(gym.Env):
         0: Empty, 1: Pac-dot, 2: Wall, 3: Pac-Man, 4: Ghost
         """
         grid = np.array([
-            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2],
+            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1],
             [0, 2, 4, 0, 4, 2, 0, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1],
-            [0, 2, 0, 0, 0, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 2],
+            [0, 2, 0, 0, 0, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 1],
             [0, 2, 4, 0, 4, 2, 0, 2, 2, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
             [0, 2, 2, 2, 2, 2, 0, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 1],
-            [0, 0, 0, 2, 0, 0, 0, 2, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1],
+            [0, 0, 0, 2, 0, 0, 0, 2, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
             [1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1],
             [1, 2, 1, 1, 1, 2, 1, 2, 2, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1],
-            [1, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
+            [1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
         ])
         return grid
 
