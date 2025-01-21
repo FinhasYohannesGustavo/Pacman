@@ -175,7 +175,8 @@ class Ghost:
             self.invalid_move_attempts[new_pos] = 1
 
         if self.invalid_move_attempts[new_pos] <= 5:
-            print(f"Ghost {self.id} cannot move to position: {new_pos}")
+            # print(f"Ghost {self.id} cannot move to position: {new_pos}")
+            return
 
     def reset(self):
         """
