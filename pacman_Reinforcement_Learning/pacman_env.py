@@ -33,7 +33,7 @@ class Ghost:
         self.strategy = strategy  # e.g., 'chase', 'scatter', 'random'
         self.scatter_target = scatter_target
         self.invalid_move_attempts = {}
-        self.move_frequency = 1.5  # <-- ghost moves only once every 3 times 'move()' is called
+        self.move_frequency = 1.5  # <-- ghost moves only once every 1.5 times 'move()' is called
         self.step_counter = 0
 
     def move(self, pacman_pos):
