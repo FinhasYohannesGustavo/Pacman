@@ -14,8 +14,9 @@ import sys
 pygame.init()
 pygame.mixer.init()
 
+
 class Ghost:
-    def __init__(self, id_, state, env, strategy='chase', scatter_target=(0,0)):
+    def __init__(self, id_, state, env, strategy='chase', scatter_target=(0, 0)):
         """
         Initialize a Ghost.
 
@@ -33,7 +34,7 @@ class Ghost:
         self.strategy = strategy  # e.g., 'chase', 'scatter', 'random'
         self.scatter_target = scatter_target
         self.invalid_move_attempts = {}
-        self.move_frequency = 1.5  # <-- ghost moves only once every 1.5 times 'move()' is called
+        self.move_frequency = 1.5  # Ghost moves only once every 1.5 times 'move()' is called
         self.step_counter = 0
 
     def move(self, pacman_pos):
@@ -43,10 +44,9 @@ class Ghost:
         Parameters:
             pacman_pos (Tuple[int, int]): Current position of Pac-Man.
         """
-
-         # Increase our counter each call
+        # Increase the step counter
         self.step_counter += 1
-        # If we haven't reached move_frequency yet, skip actual move
+        # If the step counter hasn't reached move_frequency, skip movement
         if self.step_counter < self.move_frequency:
             return
 
@@ -57,7 +57,6 @@ class Ghost:
             self.scatter()
         elif self.strategy == 'random':
             self.random_move()
-
 
     def chase_pacman(self, pacman_pos):
         """
@@ -157,7 +156,6 @@ class Ghost:
                 self.env.grid[self.state] = 0  # Remove ghost from current position
                 self.state = new_pos
                 self.env.grid[self.state] = 4  # Place ghost in new position
-                # print(f"Ghost {self.id} moved randomly to {new_pos}")
                 return
         # If no valid moves, do nothing
         print(f"Ghost {self.id} cannot move; no valid positions available.")
@@ -175,8 +173,7 @@ class Ghost:
             self.invalid_move_attempts[new_pos] = 1
 
         if self.invalid_move_attempts[new_pos] <= 5:
-            # print(f"Ghost {self.id} cannot move to position: {new_pos}")
-            return
+            print(f"Ghost {self.id} cannot move to position: {new_pos}")
 
     def reset(self):
         """
@@ -200,9 +197,9 @@ class PacManEnv(gym.Env):
         # Define action and observation space
         self.action_space = spaces.Discrete(4)  # 0=Up, 1=Down, 2=Left, 3=Right
 
-        # Define observation space (adjust as per your features)
+        # Updated state_size and observation_space
         self.num_ghosts = 4
-        self.state_size = 2 + 1 + 1 + (4 * self.num_ghosts) + 4 + 1
+        self.state_size = 2 + self.num_ghosts + 1 + (4 * self.num_ghosts) + 4 + 1  # 28
         self.observation_space = spaces.Box(low=0, high=1, shape=(self.state_size,), dtype=np.float32)
 
         # Initialize game variables
@@ -231,7 +228,6 @@ class PacManEnv(gym.Env):
         # Rendering control
         self.render_enabled = render_enabled
 
-    
     def load_images(self):
         """
         Load and scale all necessary images for rendering.
@@ -313,11 +309,12 @@ class PacManEnv(gym.Env):
         ghost_positions = list(zip(positions[0], positions[1]))
         if len(ghost_positions) != self.num_ghosts:
             raise ValueError(f"Expected {self.num_ghosts} ghosts, but found {len(ghost_positions)} in the grid.")
-        
+
         # Define strategies and scatter targets for each ghost
         strategies = ['chase', 'scatter', 'random', 'chase']  # Example strategies
-        scatter_targets = [(0,0), (0,24), (9,0), (9,24)]  # Example scatter targets
-        
+        scatter_targets = [(0, 0), (0, self.grid.shape[1] - 1),
+                           (self.grid.shape[0] - 1, 0), (self.grid.shape[0] - 1, self.grid.shape[1] - 1)]  # Corners
+
         ghosts = []
         for i, pos in enumerate(ghost_positions):
             strategy = strategies[i % len(strategies)]
@@ -334,11 +331,11 @@ class PacManEnv(gym.Env):
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         """
         Reset the state of the environment to an initial state.
-        
+
         Parameters:
             seed (int, optional): Seed for the environment's random number generator.
             options (dict, optional): Additional options for resetting the environment.
-        
+
         Returns:
             observation (np.array): The initial observation of the environment.
             info (dict): Additional information about the reset.
@@ -370,10 +367,10 @@ class PacManEnv(gym.Env):
     def step(self, action):
         """
         Execute one time step within the environment.
-        
+
         Parameters:
             action (int): Action taken by the agent.
-        
+
         Returns:
             observation (np.array): Next state.
             reward (float): Reward obtained.
@@ -478,7 +475,7 @@ class PacManEnv(gym.Env):
                 y = row * self.scale
                 if cell == 1:
                     # Pac-dot
-                    pygame.draw.circle(self.screen, (255, 255, 0), (x + self.scale//2, y + self.scale//2), 3)
+                    pygame.draw.circle(self.screen, (255, 255, 0), (x + self.scale // 2, y + self.scale // 2), 3)
                 elif cell == 2:
                     # Wall
                     pygame.draw.rect(self.screen, (0, 0, 255), (x, y, self.scale, self.scale))  # Blue walls
@@ -516,6 +513,13 @@ class PacManEnv(gym.Env):
     def get_new_position(self, position, action):
         """
         Calculate the new position based on the action.
+
+        Parameters:
+            position (Tuple[int, int]): Current position.
+            action (int): Action identifier (0=Up, 1=Down, 2=Left, 3=Right).
+
+        Returns:
+            Tuple[int, int]: New position after action.
         """
         row, col = position
         if action == 0:  # Up
@@ -550,15 +554,22 @@ class PacManEnv(gym.Env):
         return True
 
     def get_observation(self):
-        # Normalize features
+        """
+        Construct the observation vector.
+
+        Returns:
+            np.array: Observation vector of shape (28,).
+        """
+        # Normalize Pac-Man's position
         pac_r, pac_c = self.pacman_pos
         pac_r_norm = pac_r / self.grid.shape[0]
         pac_c_norm = pac_c / self.grid.shape[1]
 
-        # Nearest ghost distance (normalized)
-        ghost_distances = [abs(pac_r - ghost.state[0]) + abs(pac_c - ghost.state[1]) for ghost in self.ghosts]
-        min_ghost_distance = min(ghost_distances) if ghost_distances else 10
-        ghost_dist_norm = min_ghost_distance / (self.grid.shape[0] + self.grid.shape[1])
+        # Distances to all ghosts (Manhattan distance, normalized)
+        ghost_distances = [
+            (abs(pac_r - ghost.state[0]) + abs(pac_c - ghost.state[1])) / (self.grid.shape[0] + self.grid.shape[1])
+            for ghost in self.ghosts
+        ]
 
         # Number of pac-dots left (normalized)
         initial_dots = np.sum(self.grid == 1) + (self.dots_left if hasattr(self, 'dots_left') else 0)
@@ -591,24 +602,28 @@ class PacManEnv(gym.Env):
 
         # Local dot density (within a radius of 2)
         dot_density = self.get_local_dot_density(radius=2)
-        dot_density = np.array(dot_density, dtype=np.float32)
+        dot_density = np.array([dot_density], dtype=np.float32)
 
         # Convert scalar features to float32
         pac_r_norm = np.float32(pac_r_norm)
         pac_c_norm = np.float32(pac_c_norm)
-        ghost_dist_norm = np.float32(ghost_dist_norm)
         dots_left_norm = np.float32(dots_left_norm)
 
-        # Concatenate all features as float32
+        # Convert distances to float32
+        ghost_dist_norm = np.array(ghost_distances, dtype=np.float32)
+
+        # Concatenate all features into a single state vector
         state_vector = np.concatenate((
             [pac_r_norm, pac_c_norm],
-            [ghost_dist_norm],
+            ghost_dist_norm,          # Distances to all ghosts
             [dots_left_norm],
-            ghost_dir_one_hot,
+            ghost_dir_one_hot,        # Directions of all ghosts
             walls,
-            [dot_density]
+            dot_density
         ), axis=0)
 
+        # Debugging: Print the shape of the observation
+        # print(f"Observation shape: {state_vector.shape}")  # Should be (28,)
         return state_vector
 
     def get_local_dot_density(self, radius=2):
