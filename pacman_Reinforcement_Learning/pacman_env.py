@@ -288,7 +288,7 @@ class PacManEnv(gym.Env):
         self.WIN_REWARD = 600
         self.LOSE_PENALTY = -350
         self.EAT_GHOST_REWARD = 10
-        self.MILSTONE_REWARD = 100
+        self.MILSTONE_REWARD = 1
 
         # Additional attributes for animation
         self.pacman_mouth_open = True
