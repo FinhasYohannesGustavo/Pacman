@@ -282,13 +282,13 @@ class PacManEnv(gym.Env):
         self.load_images()
 
         # Reward structure
-        self.PACDOT_REWARD = 25  # Increased reward for eating a pac-dot
-        self.BUFF_PACDOT_REWARD = 40
+        self.PACDOT_REWARD = 35  # Increased reward for eating a pac-dot
+        self.BUFF_PACDOT_REWARD = 50
         self.MOVE_PENALTY = -5    # Increased penalty for each move
         self.WIN_REWARD = 600
         self.LOSE_PENALTY = -350
         self.EAT_GHOST_REWARD = 10
-        self.MILSTONE_REWARD = 1
+        self.MILSTONE_REWARD = 1.2 #Small living reward
 
         # Additional attributes for animation
         self.pacman_mouth_open = True
@@ -523,11 +523,11 @@ class PacManEnv(gym.Env):
                     for dot_r, dot_c in pac_dots_positions
                 ]
                 min_dot_distance = min(distances_to_dots)
-                reward += (1 - min_dot_distance) * 0.2  # Increased scaling factor
+                reward += (1 - min_dot_distance) * 0.5  # Increased scaling factor
 
             # Discourage moving towards ghosts
             if min_ghost_distance < 1.0:
-                reward -= (1.0 - min_ghost_distance) * 0.1  # Smaller scaling factor
+                reward -= (1.0 - min_ghost_distance) * 0.3  # Smaller scaling factor
 
             # If all ghosts are dead, prioritize eating pac-dots
             if all(not ghost.alive for ghost in self.ghosts):
