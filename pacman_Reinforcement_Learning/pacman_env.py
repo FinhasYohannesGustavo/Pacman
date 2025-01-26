@@ -285,7 +285,7 @@ class PacManEnv(gym.Env):
         self.PACDOT_REWARD = 35  # Increased reward for eating a pac-dot
         self.BUFF_PACDOT_REWARD = 50
         self.MOVE_PENALTY = -5    # Increased penalty for each move
-        self.WIN_REWARD = 600
+        self.WIN_REWARD = 3000
         self.LOSE_PENALTY = -350
         self.EAT_GHOST_REWARD = 10
         self.MILSTONE_REWARD = 1.2 #Small living reward
@@ -297,7 +297,7 @@ class PacManEnv(gym.Env):
         self.render_enabled = render_enabled
 
         # Step limit to prevent infinite episodes
-        self.max_steps = 1000  # You can adjust this value as needed
+        self.max_steps = 1000 
         self.current_step = 0
 
     def load_images(self):
@@ -349,15 +349,15 @@ class PacManEnv(gym.Env):
             [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1],
             [0, 2, 4, 0, 4, 2, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1],
             [0, 2, 0, 0, 0, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 1],
-            [0, 2, 4, 0, 0, 2, 0, 2, 2, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
+            [0, 2, 4, 0, 0, 2, 0, 2, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
             [0, 2, 2, 2, 2, 2, 0, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 1],
             [0, 0, 0, 2, 0, 0, 0, 2, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-            [1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1],
-            [1, 2, 1, 1, 1, 2, 1, 2, 2, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1],
-            [1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
+            [0, 2, 0, 2, 0, 2, 1, 2, 1, 1, 1, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 2, 1, 2, 1],
+            [0, 2, 0, 0, 0, 2, 1, 2, 2, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1],
+            [0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
         ])
 
-        # **Do NOT remove Pac-Man (3) and Ghosts (4) here. They will be managed separately.**
+        
 
         return grid
 

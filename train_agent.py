@@ -59,7 +59,7 @@ def main():
     
     # Train the agent
     model.learn(
-        total_timesteps=2_000_000,
+        total_timesteps=3_000_000,
         callback=[checkpoint_callback, eval_callback]
     )
     
