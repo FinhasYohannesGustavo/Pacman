@@ -64,7 +64,7 @@ def main():
     )
     
     # Save the final model
-    model.save("ppo_pacman_final")
+    model.save("ppo_pacman_final_milestone")
     print("Training completed and model saved.")
 
 if __name__ == "__main__":

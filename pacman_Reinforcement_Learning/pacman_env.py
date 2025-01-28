@@ -274,6 +274,7 @@ class PacManEnv(gym.Env):
         self.pacman_pos = self.get_pacman_start_pos()
         self.ghosts = self.initialize_ghosts()
         self.dots_left = self.count_pacdots()
+        self.initial_dots = self.dots_left  # **Added: Store initial number of pac-dots**
         self.buff_dots = set()  # Set to track buff dots positions
         self.buff_duration = 40  # Timesteps for which buff is active (5 seconds at 60 steps/sec)
         self.buff_timer = 0
@@ -290,11 +291,11 @@ class PacManEnv(gym.Env):
         # Reward structure
         self.PACDOT_REWARD = 35  # Increased reward for eating a pac-dot
         self.BUFF_PACDOT_REWARD = 50
-        self.MOVE_PENALTY = -5    # Increased penalty for each move
+        self.MOVE_PENALTY = -0.5    # Increased penalty for each move
         self.WIN_REWARD = 3000
         self.LOSE_PENALTY = -350
-        self.EAT_GHOST_REWARD = 10
-        self.MILSTONE_REWARD = 1 #Small living reward
+        self.EAT_GHOST_REWARD = 50
+        self.MILSTONE_REWARD = 300  # **Changed: Extra reward for milestones**
 
         # Additional attributes for animation
         self.pacman_mouth_open = True
@@ -308,6 +309,17 @@ class PacManEnv(gym.Env):
 
         # Current chasing ghost ID (added for optional rotation)
         self.current_chasing_ghost_id = 0  # Initially, the first ghost is chasing
+
+        # **Added: Initialize font for rendering text**
+        self.font = pygame.font.SysFont(None, 24)
+
+        # **Added: Define milestone thresholds and flags**
+        self.milestone_thresholds = [0.75, 0.5, 0.25, 0.1, 0.05]  # 75%, 50%, 25%, 10%, 5%
+        self.milestone_reached = [False] * len(self.milestone_thresholds)
+
+        # **Added: Message display timer**
+        self.milestone_message = ""
+        self.milestone_message_timer = 0  # Duration to display the message
 
     def load_images(self):
         """
@@ -422,6 +434,7 @@ class PacManEnv(gym.Env):
         self.pacman_pos = self.get_pacman_start_pos()
         self.ghosts = self.initialize_ghosts()
         self.dots_left = self.count_pacdots()
+        self.initial_dots = self.dots_left  # **Added: Reset initial_dots**
         self.buff_dots = set()  # Clear any existing buff dots
         self.buff_timer = 0
         self.power_mode = False
@@ -434,6 +447,11 @@ class PacManEnv(gym.Env):
         self.grid[self.pacman_pos] = 0
         for ghost in self.ghosts:
             self.grid[ghost.state] = 0
+
+        # **Added: Reset milestone flags and messages**
+        self.milestone_reached = [False] * len(self.milestone_thresholds)
+        self.milestone_message = ""
+        self.milestone_message_timer = 0
 
         # Return the initial observation and info
         observation = self.get_observation()
@@ -475,17 +493,20 @@ class PacManEnv(gym.Env):
                     reward += self.PACDOT_REWARD
                     self.dots_left -= 1
                     self.grid[self.pacman_pos] = 0  # Remove pac-dot
-                    # print(f"Pac-Man ate a pac-dot at {self.pacman_pos}.")
+                    # **Added: Print pac-dot consumption**
+                    # print(f"Pac-Man ate a pac-dot at {self.pacman_pos}. Dots left: {self.dots_left}")
                 elif cell == 5:
                     reward += self.BUFF_PACDOT_REWARD
                     self.power_mode = True
                     self.buff_timer = self.buff_duration
                     self.grid[self.pacman_pos] = 0  # Remove buff pac-dot
                     self.buff_dots.discard(self.pacman_pos)
+                    # **Added: Print buff pac-dot consumption**
                     # print(f"Pac-Man ate a buff pac-dot at {self.pacman_pos}. Power mode activated.")
             else:
                 # Invalid move (wall or out of bounds)
                 reward += self.MOVE_PENALTY  # Penalize invalid moves
+                # **Added: Print invalid move attempt**
                 # print(f"Pac-Man attempted invalid move to {new_pacman_pos}. Penalized.")
 
             # Move Ghosts
@@ -497,11 +518,13 @@ class PacManEnv(gym.Env):
                         reward += self.EAT_GHOST_REWARD
                         ghost.alive = False
                         ghost.respawn_timer = ghost.respawn_steps
+                        # **Added: Print ghost eaten**
                         # print(f"Pac-Man ate Ghost {ghost.id} at {ghost.state}. Ghost will respawn shortly.")
                     else:
                         # Ghost eats Pac-Man
                         reward += self.LOSE_PENALTY
                         done = True
+                        # **Added: Print game over**
                         # print(f"Pac-Man was eaten by Ghost {ghost.id} at {ghost.state}. Game Over.")
                         break  # Exit loop since Pac-Man is dead
 
@@ -509,13 +532,15 @@ class PacManEnv(gym.Env):
             if self.dots_left == 0:
                 reward += self.WIN_REWARD
                 done = True
-                # print("Pac-Man has collected all pac-dots. You Win!")
+                # **Added: Print win condition**
+                print("Pac-Man has collected all pac-dots. You Win!")
 
             # Handle Power Mode Timer
             if self.power_mode:
                 self.buff_timer -= 1
                 if self.buff_timer <= 0:
                     self.power_mode = False
+                    # **Added: Print power-up deactivation**
                     # print("Power mode has worn off.")
 
             # Distance-based reward adjustments
@@ -525,6 +550,13 @@ class PacManEnv(gym.Env):
                 for ghost in self.ghosts if ghost.alive
             ]
             min_ghost_distance = min(ghost_distances) if ghost_distances else 10
+
+            # **Added: Print distance to ghosts if they are very close (≤2)**
+            for ghost in self.ghosts:
+                if ghost.alive:
+                    distance = abs(pac_r - ghost.state[0]) + abs(pac_c - ghost.state[1])
+                    if distance <= 2:
+                        print(f"Ghost {ghost.id} is very close! Distance: {distance}")
 
             # Encourage moving towards pac-dots
             pac_dots_positions = list(zip(*np.where(self.grid == 1)))
@@ -545,10 +577,21 @@ class PacManEnv(gym.Env):
                 # Additional reward for collecting pac-dots when no ghosts are present
                 reward += self.PACDOT_REWARD * 0.5  # Encourage collecting pac-dots
 
-            total_dots = np.sum(self.grid == 1)
-            milestone_threshold = total_dots // 10  # Reward every 10% of pac-dots collected
-            if self.dots_left % milestone_threshold == 0 and self.dots_left != 0:
-                reward += self.MILSTONE_REWARD
+            # **Added: Milestone Rewards and Notifications**
+            current_percentage = self.dots_left / self.initial_dots if self.initial_dots > 0 else 0
+            for idx, threshold in enumerate(self.milestone_thresholds):
+                if not self.milestone_reached[idx] and current_percentage <= threshold:
+                    reward += self.MILSTONE_REWARD  # Extra 300 points
+                    self.milestone_reached[idx] = True
+                    self.milestone_message = f"Milestone reached: {int(threshold * 100)}% pac-dots left! +300 points."
+                    self.milestone_message_timer = 60  # Display for 60 frames (~1 second)
+                    print(self.milestone_message)  # **Optional: Print to console**
+
+            # **Added: Display milestone message for a short duration**
+            if self.milestone_message_timer > 0:
+                self.milestone_message_timer -= 1
+            else:
+                self.milestone_message = ""
 
             # Increment step counter and check for step limit
             self.current_step += 1
@@ -556,12 +599,15 @@ class PacManEnv(gym.Env):
                 done = True
                 truncated = True
                 reward += self.LOSE_PENALTY  # Optional: Penalize for truncation
-                # print(f"Episode truncated after {self.max_steps} steps.")
+                # **Added: Print episode truncation**
+                print(f"Episode truncated after {self.max_steps} steps.")
 
         except IndexError as e:
             # print(f"IndexError encountered during step: {e}")
             done = True
             reward += self.LOSE_PENALTY
+            # **Added: Print IndexError**
+            print(f"IndexError encountered during step: {e}. Episode terminated.")
 
         # Toggle Pac-Man's mouth state for animation
         self.pacman_mouth_open = not self.pacman_mouth_open
@@ -629,6 +675,22 @@ class PacManEnv(gym.Env):
                 else:
                     ghost_image = self.ghost_images[0]  # Fallback to first image if ID exceeds list
                 self.screen.blit(ghost_image, (ghost_x, ghost_y))
+
+        # **Added: Render the number of pac-dots left**
+        pacdots_text = self.font.render(f"Pac-Dots Left: {self.dots_left}", True, (255, 255, 255))
+        self.screen.blit(pacdots_text, (10, 10))  # Position at top-left corner
+
+        # **Added: Render milestone messages if any**
+        if self.milestone_message and self.milestone_message_timer > 0:
+            milestone_text = self.font.render(self.milestone_message, True, (255, 255, 255))
+            # Center the text on the screen
+            text_rect = milestone_text.get_rect(center=(self.grid.shape[1] * self.scale // 2, 20))
+            self.screen.blit(milestone_text, text_rect)
+
+        # **Added: Render power-up indicator if active**
+        if self.power_mode:
+            power_text = self.font.render("Power-Up Active!", True, (255, 255, 255))
+            self.screen.blit(power_text, (10, 30))  # Position below pac-dots count
 
         # Optionally, draw score or other info here
 
@@ -741,8 +803,7 @@ class PacManEnv(gym.Env):
             ghost_distances.append(1.0)
 
         # Number of pac-dots left (normalized)
-        initial_dots = np.sum(self.grid == 1) + (self.dots_left if hasattr(self, 'dots_left') else 0)
-        dots_left_norm = self.dots_left / initial_dots if initial_dots > 0 else 0.0
+        dots_left_norm = self.dots_left / self.initial_dots if self.initial_dots > 0 else 0.0
 
         # One-hot encoding for ghost directions (Up, Down, Left, Right for each ghost)
         ghost_directions = []
@@ -842,6 +903,7 @@ class PacManEnv(gym.Env):
                 pos = random.choice(pacdot_positions)
                 self.grid[pos] = 5  # Replace pac-dot with buff pac-dot
                 self.buff_dots.add(pos)
+                # **Added: Print buff pac-dot spawn**
                 # print(f"Buff pac-dot spawned at {pos} by replacing a pac-dot.")
 
     def assign_new_chasing_ghost(self):
@@ -861,7 +923,8 @@ class PacManEnv(gym.Env):
         new_chasing_ghost = random.choice(available_ghosts)
         new_chasing_ghost.current_strategy = 'chase'
         self.current_chasing_ghost_id = new_chasing_ghost.id
-        # print(f"Ghost {new_chasing_ghost.id} is now chasing Pac-Man.")
+        # **Added: Print new chasing ghost assignment**
+        print(f"Ghost {new_chasing_ghost.id} is now chasing Pac-Man.")
 
     def render_environment(self):
         """
@@ -874,3 +937,20 @@ class PacManEnv(gym.Env):
                     running = False
             self.render()
         self.close()
+
+
+# **Added: Main execution block for testing**
+if __name__ == "__main__":
+    env = PacManEnv(render_enabled=True)
+    observation, info = env.reset()
+    done = False
+
+    try:
+        while not done:
+            action = env.action_space.sample()  # Replace with agent's action
+            observation, reward, done, truncated, info = env.step(action)
+            env.render()
+    except KeyboardInterrupt:
+        print("Game interrupted by user.")
+    finally:
+        env.close()
