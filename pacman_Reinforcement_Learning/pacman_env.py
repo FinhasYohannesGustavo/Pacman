@@ -80,13 +80,19 @@ class Ghost:
     def switch_strategy(self):
         """
         Switch the ghost's strategy to prevent looping or to add dynamics.
+        Only allow switching to 'random'. Prevent switching back to 'chase'.
+        If the ghost is the current chasing ghost and switches to 'random',
+        notify the environment to assign a new chasing ghost.
         """
         if self.current_strategy == 'chase':
             self.current_strategy = 'random'
+            # Notify the environment to assign a new chasing ghost
+            self.env.assign_new_chasing_ghost()
             # print(f"Ghost {self.id} switched strategy to 'random'.")
         elif self.current_strategy == 'random':
-            self.current_strategy = 'chase'
-            # print(f"Ghost {self.id} switched strategy to 'chase'.")
+            # Prevent switching back to 'chase'
+            self.current_strategy = 'random'
+            # print(f"Ghost {self.id} remains on 'random' strategy.")
         self.mode_timer = 100  # Reset mode timer
 
     def chase_pacman(self, pacman_pos):
@@ -300,6 +306,9 @@ class PacManEnv(gym.Env):
         self.max_steps = 1000 
         self.current_step = 0
 
+        # Current chasing ghost ID (added for optional rotation)
+        self.current_chasing_ghost_id = 0  # Initially, the first ghost is chasing
+
     def load_images(self):
         """
         Load and scale all necessary images for rendering.
@@ -346,7 +355,7 @@ class PacManEnv(gym.Env):
         """
         grid = np.array([
             [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+            [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 0, 2, 1, 2, 2, 0, 2, 2, 1, 2, 2, 2, 2, 1],
             [0, 2, 4, 0, 4, 2, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1],
             [0, 2, 0, 0, 0, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 1],
             [0, 2, 4, 0, 0, 2, 0, 2, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
@@ -356,9 +365,7 @@ class PacManEnv(gym.Env):
             [0, 2, 0, 0, 0, 2, 1, 2, 2, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1],
             [0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
         ])
-
-        
-
+            
         return grid
 
     def get_pacman_start_pos(self):
@@ -382,13 +389,17 @@ class PacManEnv(gym.Env):
         if len(ghost_positions) != self.num_ghosts:
             raise ValueError(f"Expected {self.num_ghosts} ghosts, but found {len(ghost_positions)} in the grid.")
 
-        # Define strategies for each ghost
-        strategies = ['chase', 'random', 'chase']  # Only 'chase' and 'random'
+        # Define strategies: Only the first ghost is 'chase', others are 'random'
+        strategies = ['chase'] + ['random'] * (self.num_ghosts - 1)
 
         ghosts = []
         for i, pos in enumerate(ghost_positions):
             strategy = strategies[i % len(strategies)]
             ghosts.append(Ghost(i, pos, self, strategy))
+        
+        # Set the current chasing ghost ID
+        self.current_chasing_ghost_id = 0  # Assuming the first ghost is assigned 'chase'
+        
         return ghosts
 
     def count_pacdots(self):
@@ -538,7 +549,6 @@ class PacManEnv(gym.Env):
             milestone_threshold = total_dots // 10  # Reward every 10% of pac-dots collected
             if self.dots_left % milestone_threshold == 0 and self.dots_left != 0:
                 reward += self.MILSTONE_REWARD
-
 
             # Increment step counter and check for step limit
             self.current_step += 1
@@ -834,6 +844,25 @@ class PacManEnv(gym.Env):
                 self.buff_dots.add(pos)
                 # print(f"Buff pac-dot spawned at {pos} by replacing a pac-dot.")
 
+    def assign_new_chasing_ghost(self):
+        """
+        Assign the 'chase' strategy to a new ghost.
+        This method ensures that only one ghost is chasing at any time.
+        """
+        # Find ghosts that are alive and not currently chasing
+        available_ghosts = [ghost for ghost in self.ghosts if ghost.alive and ghost.id != self.current_chasing_ghost_id]
+        
+        if not available_ghosts:
+            # No available ghosts to assign
+            self.current_chasing_ghost_id = None
+            return
+        
+        # Select a new ghost to chase (e.g., randomly)
+        new_chasing_ghost = random.choice(available_ghosts)
+        new_chasing_ghost.current_strategy = 'chase'
+        self.current_chasing_ghost_id = new_chasing_ghost.id
+        # print(f"Ghost {new_chasing_ghost.id} is now chasing Pac-Man.")
+
     def render_environment(self):
         """
         Render the environment and keep the window open until manually closed.
@@ -845,18 +874,3 @@ class PacManEnv(gym.Env):
                     running = False
             self.render()
         self.close()
-
-    def state_to_pos(self, state: Tuple[int, int]) -> Tuple[int, int]:
-        """
-        Convert grid-based state to pixel coordinates.
-
-        Parameters:
-            state (Tuple[int, int]): The (row, col) position on the grid.
-
-        Returns:
-            Tuple[int, int]: The (x, y) pixel coordinates.
-        """
-        row, col = state
-        x = col * self.scale
-        y = row * self.scale
-        return x, y
