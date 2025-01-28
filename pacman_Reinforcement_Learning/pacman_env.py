@@ -41,6 +41,9 @@ class Ghost:
         self.respawn_steps = respawn_steps  # Steps before respawn
         self.respawn_timer = 0  # Counter for respawning
 
+        # **Added: Move probability to achieve 1 turns per move**
+        self.move_probability = 1 / 1  # 1
+
     def move(self, pacman_pos):
         if not self.alive:
             if self.respawn_timer > 0:
@@ -54,6 +57,10 @@ class Ghost:
         if self.step_counter < self.move_frequency:
             return
         self.step_counter = 0
+
+        # **Added: Probabilistic movement check**
+        if random.random() > self.move_probability:
+            return  # Skip moving this turn
 
         previous_position = self.state
 
@@ -291,11 +298,11 @@ class PacManEnv(gym.Env):
         # Reward structure
         self.PACDOT_REWARD = 35  # Increased reward for eating a pac-dot
         self.BUFF_PACDOT_REWARD = 50
-        self.MOVE_PENALTY = -0.5    # Increased penalty for each move
+        self.MOVE_PENALTY = -0.5    # Reduced penalty for each move
         self.WIN_REWARD = 3000
         self.LOSE_PENALTY = -350
         self.EAT_GHOST_REWARD = 50
-        self.MILSTONE_REWARD = 300  # **Changed: Extra reward for milestones**
+        self.MILSTONE_REWARD = 300  # Extra reward for milestones
 
         # Additional attributes for animation
         self.pacman_mouth_open = True
@@ -366,14 +373,14 @@ class PacManEnv(gym.Env):
         0: Empty, 1: Pac-dot, 2: Wall, 3: Pac-Man, 4: Ghost, 5: Buff Pac-dot
         """
         grid = np.array([
-            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [0, 2, 2, 0, 2, 2, 0, 2, 1, 2, 2, 0, 2, 1, 2, 2, 0, 2, 2, 1, 2, 2, 2, 2, 1],
             [0, 2, 4, 0, 4, 2, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1],
             [0, 2, 0, 0, 0, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 1],
             [0, 2, 4, 0, 0, 2, 0, 2, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
             [0, 2, 2, 2, 2, 2, 0, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 1],
-            [0, 0, 0, 2, 0, 0, 0, 2, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-            [0, 2, 0, 2, 0, 2, 1, 2, 1, 1, 1, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 2, 1, 2, 1],
+            [0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+            [0, 2, 0, 2, 0, 2, 1, 2, 1, 1, 1, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 2, 0, 2, 1],
             [0, 2, 0, 0, 0, 2, 1, 2, 2, 2, 1, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1],
             [0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1]
         ])
@@ -903,6 +910,8 @@ class PacManEnv(gym.Env):
                 pos = random.choice(pacdot_positions)
                 self.grid[pos] = 5  # Replace pac-dot with buff pac-dot
                 self.buff_dots.add(pos)
+                # **Added: Decrement dots_left since a regular pac-dot is replaced**
+                self.dots_left -= 1
                 # **Added: Print buff pac-dot spawn**
                 # print(f"Buff pac-dot spawned at {pos} by replacing a pac-dot.")
 
